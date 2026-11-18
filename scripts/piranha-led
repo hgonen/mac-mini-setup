@@ -1,0 +1,27 @@
+#!/bin/bash
+# Piranha 2345 isik servisi kontrolu:  on | off | status
+LABEL=com.hg.piranha-led
+PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+UID_N=$(id -u)
+
+case "${1:-status}" in
+  on)
+    launchctl bootstrap "gui/$UID_N" "$PLIST" 2>/dev/null
+    launchctl kickstart -k "gui/$UID_N/$LABEL" 2>/dev/null
+    echo "isik servisi ACIK"
+    ;;
+  off)
+    launchctl bootout "gui/$UID_N/$LABEL" 2>/dev/null
+    # biti temizle -> isik soner
+    /opt/homebrew/bin/hidapitester --vidpid 1A2C:2C27 --usagePage 1 --usage 6 \
+      -l 1 --nonexclusive --open --send-output 0 -q >/dev/null 2>&1
+    echo "isik servisi KAPALI"
+    ;;
+  *)
+    if launchctl print "gui/$UID_N/$LABEL" >/dev/null 2>&1; then
+      echo "durum: CALISIYOR (pid $(launchctl print "gui/$UID_N/$LABEL" 2>/dev/null | awk '/pid =/{print $3; exit}'))"
+    else
+      echo "durum: KAPALI"
+    fi
+    ;;
+esac
